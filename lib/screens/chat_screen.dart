@@ -1,25 +1,39 @@
 import 'dart:async';
 
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_database/ui/firebase_animated_list.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:my_friendlychat/widgets/ChatMessage.dart';
 
 class ChatScreen extends StatefulWidget {
-  ChatScreen({this.googleSignIn});
+  ChatScreen({this.googleSignIn, this.analytics, this.auth, this.reference});
 
   final GoogleSignIn googleSignIn;
+  final FirebaseAnalytics analytics;
+  final FirebaseAuth auth;
+  final DatabaseReference reference;
 
   @override
-  State<StatefulWidget> createState() =>
-      new ChatScreenState(googleSignIn: googleSignIn);
+  State<StatefulWidget> createState() => new ChatScreenState(
+        googleSignIn: googleSignIn,
+        analytics: analytics,
+        auth: auth,
+        reference: reference,
+      );
 }
 
-class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
-  ChatScreenState({this.googleSignIn});
+class ChatScreenState extends State<ChatScreen> {
+  ChatScreenState(
+      {this.googleSignIn, this.analytics, this.auth, this.reference});
 
   final GoogleSignIn googleSignIn;
-  final List<ChatMessage> _messages = <ChatMessage>[];
+  final FirebaseAnalytics analytics;
+  final FirebaseAuth auth;
+  final DatabaseReference reference;
   final TextEditingController _textController = new TextEditingController();
   bool _isComposing = false;
 
@@ -33,19 +47,12 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   void _sendMessage({String text}) {
-    ChatMessage chatMessage = new ChatMessage(
-      text: text,
-      name: googleSignIn.currentUser.displayName,
-      photoUrl: googleSignIn.currentUser.photoUrl,
-      animationController: new AnimationController(
-          duration: new Duration(milliseconds: 600), vsync: this),
-    );
-
-    setState(() {
-      _messages.insert(0, chatMessage);
+    reference.push().set({
+      'text': text,
+      'senderName': googleSignIn.currentUser.displayName,
+      'senderPhotoUrl': googleSignIn.currentUser.photoUrl,
     });
-
-    chatMessage.animationController.forward();
+    analytics.logEvent(name: 'send_message');
   }
 
   Future<Null> _ensureLoggedIn() async {
@@ -53,6 +60,16 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     if (user == null) user = await googleSignIn.signInSilently();
     if (user == null) {
       await googleSignIn.signIn();
+      analytics.logLogin();
+    }
+
+    if (await auth.currentUser() == null) {
+      GoogleSignInAuthentication credentials =
+          await googleSignIn.currentUser.authentication;
+      await auth.signInWithGoogle(
+        idToken: credentials.idToken,
+        accessToken: credentials.accessToken,
+      );
     }
   }
 
@@ -107,11 +124,18 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         child: new Column(
           children: <Widget>[
             new Flexible(
-              child: new ListView.builder(
+              child: new FirebaseAnimatedList(
+                query: reference,
+                sort: (a, b) => b.key.compareTo(a.key),
                 padding: new EdgeInsets.all(8.0),
                 reverse: true,
-                itemBuilder: (_, int index) => _messages[index],
-                itemCount: _messages.length,
+                itemBuilder:
+                    (_, DataSnapshot snapshot, Animation<double> animation) {
+                  return new ChatMessage(
+                    snapshot: snapshot,
+                    animation: animation,
+                  );
+                },
               ),
             ),
             new Divider(height: 1.0),
@@ -129,13 +153,5 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             : null,
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    for (ChatMessage chatMessage in _messages) {
-      chatMessage.animationController.dispose();
-    }
-    super.dispose();
   }
 }

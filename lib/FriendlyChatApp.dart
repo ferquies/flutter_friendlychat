@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:my_friendlychat/screens/chat_screen.dart';
+
+final googleSignIn = new GoogleSignIn();
 
 class FriendlyChatApp extends StatelessWidget {
   @override
@@ -10,7 +13,9 @@ class FriendlyChatApp extends StatelessWidget {
       theme: defaultTargetPlatform == TargetPlatform.iOS
           ? kIosTheme
           : kDefaultTheme,
-      home: new ChatScreen(),
+      home: new ChatScreen(
+        googleSignIn: googleSignIn,
+      ),
     );
   }
 }

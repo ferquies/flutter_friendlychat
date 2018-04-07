@@ -9,3 +9,5 @@ build/
 ios/.generated/
 packages
 .flutter-plugins
+GoogleService-Info.plist
+google-services.json

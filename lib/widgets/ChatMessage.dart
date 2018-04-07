@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-const String _name = "Fernando";
-
 class ChatMessage extends StatelessWidget {
-  ChatMessage({this.text, this.animationController});
+  ChatMessage({this.text, this.name, this.photoUrl, this.animationController});
 
   final String text;
+  final name;
+  final String photoUrl;
   final AnimationController animationController;
 
   @override
@@ -22,20 +22,22 @@ class ChatMessage extends StatelessWidget {
             new Container(
               margin: const EdgeInsets.only(right: 16.0),
               child: new CircleAvatar(
-                child: new Text(_name[0]),
+                backgroundImage: new NetworkImage(photoUrl),
               ),
             ),
             new Expanded(
-                child: new Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                new Text(_name, style: Theme.of(context).textTheme.subhead),
-                new Container(
-                  margin: const EdgeInsets.only(top: 5.0),
-                  child: new Text(text),
-                ),
-              ],
-            )),
+              child: new Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  new Text(name, //modified
+                      style: Theme.of(context).textTheme.subhead),
+                  new Container(
+                    margin: const EdgeInsets.only(top: 5.0),
+                    child: new Text(text),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

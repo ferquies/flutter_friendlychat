@@ -1,24 +1,42 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:my_friendlychat/widgets/ChatMessage.dart';
 
 class ChatScreen extends StatefulWidget {
+  ChatScreen({this.googleSignIn});
+
+  final GoogleSignIn googleSignIn;
+
   @override
-  State<StatefulWidget> createState() => new ChatScreenState();
+  State<StatefulWidget> createState() =>
+      new ChatScreenState(googleSignIn: googleSignIn);
 }
 
 class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
+  ChatScreenState({this.googleSignIn});
+
+  final GoogleSignIn googleSignIn;
   final List<ChatMessage> _messages = <ChatMessage>[];
   final TextEditingController _textController = new TextEditingController();
   bool _isComposing = false;
 
-  void _handleSubmitted(String text) {
+  Future<Null> _handleSubmitted(String text) async {
     _textController.clear();
     setState(() {
       _isComposing = false;
     });
+    await _ensureLoggedIn();
+    _sendMessage(text: text);
+  }
+
+  void _sendMessage({String text}) {
     ChatMessage chatMessage = new ChatMessage(
       text: text,
+      name: googleSignIn.currentUser.displayName,
+      photoUrl: googleSignIn.currentUser.photoUrl,
       animationController: new AnimationController(
           duration: new Duration(milliseconds: 600), vsync: this),
     );
@@ -28,6 +46,14 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     });
 
     chatMessage.animationController.forward();
+  }
+
+  Future<Null> _ensureLoggedIn() async {
+    GoogleSignInAccount user = googleSignIn.currentUser;
+    if (user == null) user = await googleSignIn.signInSilently();
+    if (user == null) {
+      await googleSignIn.signIn();
+    }
   }
 
   Widget _buildTextComposer() {

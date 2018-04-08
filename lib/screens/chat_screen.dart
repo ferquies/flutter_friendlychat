@@ -1,21 +1,31 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:math';
 
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_database/ui/firebase_animated_list.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:my_friendlychat/widgets/ChatMessage.dart';
 
 class ChatScreen extends StatefulWidget {
-  ChatScreen({this.googleSignIn, this.analytics, this.auth, this.reference});
+  ChatScreen(
+      {this.googleSignIn,
+      this.analytics,
+      this.auth,
+      this.reference,
+      this.storageReference});
 
   final GoogleSignIn googleSignIn;
   final FirebaseAnalytics analytics;
   final FirebaseAuth auth;
   final DatabaseReference reference;
+  final StorageReference storageReference;
 
   @override
   State<StatefulWidget> createState() => new ChatScreenState(
@@ -23,17 +33,23 @@ class ChatScreen extends StatefulWidget {
         analytics: analytics,
         auth: auth,
         reference: reference,
+        storageReference: storageReference,
       );
 }
 
 class ChatScreenState extends State<ChatScreen> {
   ChatScreenState(
-      {this.googleSignIn, this.analytics, this.auth, this.reference});
+      {this.googleSignIn,
+      this.analytics,
+      this.auth,
+      this.reference,
+      this.storageReference});
 
   final GoogleSignIn googleSignIn;
   final FirebaseAnalytics analytics;
   final FirebaseAuth auth;
   final DatabaseReference reference;
+  final StorageReference storageReference;
   final TextEditingController _textController = new TextEditingController();
   bool _isComposing = false;
 
@@ -46,9 +62,10 @@ class ChatScreenState extends State<ChatScreen> {
     _sendMessage(text: text);
   }
 
-  void _sendMessage({String text}) {
+  void _sendMessage({String text, String imageUrl}) {
     reference.push().set({
       'text': text,
+      'imageUrl': imageUrl,
       'senderName': googleSignIn.currentUser.displayName,
       'senderPhotoUrl': googleSignIn.currentUser.photoUrl,
     });
@@ -80,6 +97,22 @@ class ChatScreenState extends State<ChatScreen> {
         margin: const EdgeInsets.symmetric(horizontal: 8.0),
         child: new Row(
           children: <Widget>[
+            new Container(
+              margin: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: new IconButton(
+                icon: new Icon(Icons.photo_camera),
+                onPressed: () async {
+                  await _ensureLoggedIn();
+                  File imageFile = await ImagePicker.pickImage();
+                  int random = new Random().nextInt(100000);
+                  StorageReference ref =
+                      storageReference.child("image_$random.jpg");
+                  StorageUploadTask uploadTask = ref.put(imageFile);
+                  Uri downloadUrl = (await uploadTask.future).downloadUrl;
+                  _sendMessage(imageUrl: downloadUrl.toString());
+                },
+              ),
+            ),
             new Flexible(
               child: new TextField(
                 controller: _textController,
